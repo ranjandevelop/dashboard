@@ -1,0 +1,1441 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NFS Equipment Status Dashboard</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: var(--font-sans, sans-serif);
+        background: transparent;
+        color: var(--color-text-primary);
+      }
+
+      .dash {
+        padding: 16px;
+      }
+
+      .dash-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--color-background-secondary);
+        border-radius: var(--border-radius-lg);
+        padding: 14px 20px;
+        margin-bottom: 16px;
+        border: 0.5px solid var(--color-border-tertiary);
+      }
+      .dash-header h1 {
+        font-size: 17px;
+        font-weight: 500;
+      }
+      .dash-header .sub {
+        font-size: 12px;
+        color: var(--color-text-secondary);
+        margin-top: 2px;
+      }
+      .status-pill {
+        font-size: 11px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        background: var(--color-background-success);
+        color: var(--color-text-success);
+      }
+
+      .kpi-row {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .kpi {
+        background: var(--color-background-secondary);
+        border-radius: var(--border-radius-md);
+        padding: 14px 16px;
+        border: 0.5px solid var(--color-border-tertiary);
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+      .kpi:hover {
+        border-color: var(--color-border-secondary);
+      }
+      .kpi .label {
+        font-size: 11px;
+        color: var(--color-text-secondary);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .kpi .val {
+        font-size: 26px;
+        font-weight: 500;
+        line-height: 1;
+      }
+      .kpi .delta {
+        font-size: 11px;
+        margin-top: 4px;
+      }
+      .kpi .icon {
+        font-size: 18px;
+        float: right;
+        margin-top: -2px;
+      }
+      .ok {
+        color: var(--color-text-success);
+      }
+      .warn {
+        color: var(--color-text-warning);
+      }
+      .danger {
+        color: var(--color-text-danger);
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .card {
+        background: var(--color-background-primary);
+        border: 0.5px solid var(--color-border-tertiary);
+        border-radius: var(--border-radius-lg);
+        padding: 16px;
+      }
+      .card h3 {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        margin-bottom: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      canvas {
+        display: block;
+      }
+
+      .tbl {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .tbl th {
+        font-weight: 500;
+        font-size: 11px;
+        color: var(--color-text-secondary);
+        text-align: left;
+        padding: 6px 10px;
+        border-bottom: 0.5px solid var(--color-border-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .tbl td {
+        padding: 7px 10px;
+        border-bottom: 0.5px solid var(--color-border-tertiary);
+      }
+      .tbl tr:last-child td {
+        border-bottom: none;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .b-ok {
+        background: var(--color-background-success);
+        color: var(--color-text-success);
+      }
+      .b-warn {
+        background: var(--color-background-warning);
+        color: var(--color-text-warning);
+      }
+      .b-off {
+        background: var(--color-background-danger);
+        color: var(--color-text-danger);
+      }
+
+      .ring-wrap {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .ring-wrap canvas {
+        flex-shrink: 0;
+      }
+      .legend {
+        font-size: 12px;
+      }
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .leg-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      .bar-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+      .bar-label {
+        min-width: 60px;
+        color: var(--color-text-secondary);
+        font-size: 11px;
+      }
+      .bar-track {
+        flex: 1;
+        height: 14px;
+        background: var(--color-background-secondary);
+        border-radius: 7px;
+        overflow: hidden;
+      }
+      .bar-fill {
+        height: 100%;
+        border-radius: 7px;
+        transition: width 0.6s;
+      }
+      .bar-val {
+        min-width: 28px;
+        text-align: right;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+      }
+
+      .ofc-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+      }
+      .mer-box {
+        border-radius: 6px;
+        padding: 8px 6px;
+        text-align: center;
+        font-size: 10px;
+        border: 0.5px solid var(--color-border-tertiary);
+        cursor: pointer;
+        transition: transform 0.15s;
+      }
+      .mer-box:hover {
+        transform: scale(1.05);
+      }
+      .mer-box .mname {
+        font-weight: 500;
+        font-size: 11px;
+        margin-bottom: 2px;
+      }
+      .mer-box .mloc {
+        color: var(--color-text-secondary);
+        font-size: 9px;
+      }
+
+      .nav-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+      }
+      .tab {
+        padding: 7px 16px;
+        border-radius: var(--border-radius-md);
+        font-size: 13px;
+        cursor: pointer;
+        border: 0.5px solid var(--color-border-tertiary);
+        background: transparent;
+        color: var(--color-text-secondary);
+        transition: all 0.15s;
+      }
+      .tab.active {
+        background: var(--color-background-secondary);
+        color: var(--color-text-primary);
+        font-weight: 500;
+        border-color: var(--color-border-secondary);
+      }
+      .tab:hover:not(.active) {
+        border-color: var(--color-border-secondary);
+      }
+
+      .page {
+        display: none;
+      }
+      .page.active {
+        display: block;
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 16px 0 10px;
+      }
+
+      .power-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .power-card {
+        background: var(--color-background-secondary);
+        border-radius: var(--border-radius-md);
+        padding: 12px 14px;
+        border: 0.5px solid var(--color-border-tertiary);
+      }
+      .power-card .ptitle {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .phase-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+      .phase-val {
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      .siemens-bars {
+        margin-top: 6px;
+      }
+
+      .earthing-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+      .e-card {
+        background: var(--color-background-secondary);
+        border-radius: var(--border-radius-md);
+        padding: 10px 12px;
+        border: 0.5px solid var(--color-border-tertiary);
+        font-size: 12px;
+      }
+      .e-card .ename {
+        font-weight: 500;
+        margin-bottom: 4px;
+        font-size: 11px;
+      }
+      .e-val {
+        font-size: 15px;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dash">
+      <div class="dash-header">
+        <div>
+          <h1>NFS Equipment Status Report — 26 DIV</h1>
+          <div class="sub">
+            Satwari Exchange &nbsp;|&nbsp; Status Report Dashboard &nbsp;|&nbsp;
+            All Equipment
+          </div>
+        </div>
+        <div class="status-pill">All Systems Monitored</div>
+      </div>
+
+      <div class="kpi-row">
+        <div
+          class="kpi"
+          onclick="sendPrompt('Tell me about OFC MER ring status')"
+        >
+          <div class="icon">🔗</div>
+          <div class="label">MER Nodes</div>
+          <div class="val" style="color: #378add">15</div>
+          <div class="delta ok">12 in ring</div>
+        </div>
+        <div
+          class="kpi"
+          onclick="sendPrompt('Tell me about Siemens exchange card status')"
+        >
+          <div class="icon">📞</div>
+          <div class="label">Siemens Lines</div>
+          <div class="val" style="color: #1d9e75">120</div>
+          <div class="delta warn">Analog 87 · Digital 19 · IP 14</div>
+        </div>
+        <div
+          class="kpi"
+          onclick="sendPrompt('Tell me about BEU circuit status')"
+        >
+          <div class="icon">📡</div>
+          <div class="label">BEU Circuits</div>
+          <div class="val" style="color: #ba7517">27</div>
+          <div class="delta ok">All cables OK</div>
+        </div>
+        <div
+          class="kpi"
+          onclick="sendPrompt('What is the power equipment status?')"
+        >
+          <div class="icon">⚡</div>
+          <div class="label">Power Eqpt</div>
+          <div class="val" style="color: #639922">5</div>
+          <div class="delta ok">Transformer · Gen · Stabilizer</div>
+        </div>
+        <div
+          class="kpi"
+          onclick="sendPrompt('What is the earthing status across equipment?')"
+        >
+          <div class="icon">🔩</div>
+          <div class="label">Exchanges</div>
+          <div class="val" style="color: #d4537e">3</div>
+          <div class="delta">Siemens · Alkatel · FAFA</div>
+        </div>
+      </div>
+
+      <div class="nav-tabs">
+        <button class="tab active" onclick="showPage('ofc', this)">
+          OFC Network
+        </button>
+        <button class="tab" onclick="showPage('exchanges', this)">
+          Exchanges
+        </button>
+        <button class="tab" onclick="showPage('power', this)">
+          Power Status
+        </button>
+        <button class="tab" onclick="showPage('beu', this)">BEU / MSP</button>
+        <button class="tab" onclick="showPage('earthing', this)">
+          Earthing
+        </button>
+      </div>
+
+      <!-- PAGE: OFC -->
+      <div class="page active" id="page-ofc">
+        <div class="grid2">
+          <div class="card">
+            <h3>Ring Status — MER Nodes</h3>
+            <div class="ring-wrap">
+              <div
+                style="
+                  position: relative;
+                  width: 150px;
+                  height: 150px;
+                  flex-shrink: 0;
+                "
+              >
+                <canvas id="ringChart"></canvas>
+              </div>
+              <div class="legend">
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #1d9e75"></div>
+                  <span>Ring Working (5)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #ba7517"></div>
+                  <span>Ring Not Working (4)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #d85a30"></div>
+                  <span>Not Connected (2)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #378add"></div>
+                  <span>MAR Nodes (3)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #e24b4a"></div>
+                  <span>Disconnected (1)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Optical Tx/Rx Power (dBm) — Port 25</h3>
+            <div style="position: relative; width: 100%; height: 150px">
+              <canvas id="optChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom: 14px">
+          <h3>MER Node Map — Visual Status</h3>
+          <div class="ofc-grid" id="merGrid"></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>OFC Cable Distance (km) — Port 25</h3>
+            <div style="position: relative; width: 100%; height: 160px">
+              <canvas id="distChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Earthing (N-E Voltage) at MER Sites</h3>
+            <div id="neVolt"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: EXCHANGES -->
+      <div class="page" id="page-exchanges">
+        <div class="grid3">
+          <div class="card">
+            <h3>Siemens — Line Distribution</h3>
+            <div class="ring-wrap">
+              <div
+                style="
+                  position: relative;
+                  width: 120px;
+                  height: 120px;
+                  flex-shrink: 0;
+                "
+              >
+                <canvas id="siemChart"></canvas>
+              </div>
+              <div class="legend">
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #378add"></div>
+                  <span>Analog (87)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #1d9e75"></div>
+                  <span>Digital (19)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #ba7517"></div>
+                  <span>IP (14)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Alkatel — Active vs Faulty</h3>
+            <div style="position: relative; width: 100%; height: 120px">
+              <canvas id="alkChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h3>FAFA — Active vs Spare</h3>
+            <div style="position: relative; width: 100%; height: 120px">
+              <canvas id="fafaChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>Siemens LTU Card Status</h3>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>LTU</th>
+                  <th>Card Type</th>
+                  <th>Active</th>
+                  <th>Faulty</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="siemTbl"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Alkatel Shelf Cards — Active vs Faulty</h3>
+            <div style="position: relative; width: 100%; height: 220px">
+              <canvas id="alkBarChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: POWER -->
+      <div class="page" id="page-power">
+        <div class="section-title">Phase Voltage Readings</div>
+        <div class="power-row">
+          <div class="power-card">
+            <div class="ptitle">Transformer (MES Supply)</div>
+            <div class="phase-row">
+              <span>Phase 1</span><span class="phase-val ok">244V</span>
+            </div>
+            <div class="phase-row">
+              <span>Phase 2</span><span class="phase-val ok">245V</span>
+            </div>
+            <div class="phase-row">
+              <span>Phase 3</span><span class="phase-val warn">238V</span>
+            </div>
+          </div>
+          <div class="power-card">
+            <div class="ptitle">Generator 125 KVA</div>
+            <div class="phase-row">
+              <span>Ph1 O/P</span><span class="phase-val ok">414V</span>
+            </div>
+            <div class="phase-row">
+              <span>Ph2 O/P</span><span class="phase-val ok">408V</span>
+            </div>
+            <div class="phase-row">
+              <span>Ph3 O/P</span><span class="phase-val ok">414V</span>
+            </div>
+          </div>
+          <div class="power-card">
+            <div class="ptitle">Stabilizer</div>
+            <div class="phase-row">
+              <span>Ph1 I/P→O/P</span><span class="phase-val ok">235→420V</span>
+            </div>
+            <div class="phase-row">
+              <span>Ph2 I/P→O/P</span><span class="phase-val ok">235→414V</span>
+            </div>
+            <div class="phase-row">
+              <span>Ph3 I/P→O/P</span><span class="phase-val ok">233→417V</span>
+            </div>
+          </div>
+        </div>
+        <div class="section-title">Load (Amperes) by Phase</div>
+        <div class="card" style="margin-bottom: 14px">
+          <div style="position: relative; width: 100%; height: 200px">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>UPS Status</h3>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Unit</th>
+                  <th>I/P</th>
+                  <th>O/P</th>
+                  <th>N-E</th>
+                  <th>Load</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>UPS 10 KVA</td>
+                  <td>236V</td>
+                  <td>230V</td>
+                  <td><span class="badge b-warn">3V</span></td>
+                  <td>13A</td>
+                </tr>
+                <tr>
+                  <td>UPS 10 KVA (NFS)</td>
+                  <td>236V</td>
+                  <td>229V</td>
+                  <td><span class="badge b-warn">2V</span></td>
+                  <td>12A</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Equipment Earthing Values</h3>
+            <div style="position: relative; width: 100%; height: 140px">
+              <canvas id="earthChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: BEU -->
+      <div class="page" id="page-beu">
+        <div class="grid2">
+          <div class="card">
+            <h3>BEU Circuit Status Distribution</h3>
+            <div class="ring-wrap">
+              <div
+                style="
+                  position: relative;
+                  width: 140px;
+                  height: 140px;
+                  flex-shrink: 0;
+                "
+              >
+                <canvas id="beuChart"></canvas>
+              </div>
+              <div class="legend">
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #378add"></div>
+                  <span>ON CCT (10)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #ba7517"></div>
+                  <span>STBY CCT (8)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="leg-dot" style="background: #1d9e75"></div>
+                  <span>OK Spare (9)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>BEU Units — Circuit Count</h3>
+            <div style="position: relative; width: 100%; height: 140px">
+              <canvas id="beuBarChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom: 14px">
+          <h3>BEU Circuit Detail</h3>
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>BEU</th>
+                <th>Tributary</th>
+                <th>C1 Status</th>
+                <th>C2 Status</th>
+                <th>Used For</th>
+                <th>Cable</th>
+                <th>OPTI MUX</th>
+              </tr>
+            </thead>
+            <tbody id="beuTbl"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>MSP — Active Port Utilisation</h3>
+          <div style="position: relative; width: 100%; height: 140px">
+            <canvas id="mspChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: EARTHING -->
+      <div class="page" id="page-earthing">
+        <div class="section-title">Equipment Earthing Resistance (Ω)</div>
+        <div class="card" style="margin-bottom: 14px">
+          <div style="position: relative; width: 100%; height: 220px">
+            <canvas id="earthBarChart"></canvas>
+          </div>
+        </div>
+        <div class="section-title">Per-Site Earthing Status</div>
+        <div class="earthing-grid" id="earthGrid"></div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script>
+      function showPage(id, el) {
+        document
+          .querySelectorAll(".page")
+          .forEach((p) => p.classList.remove("active"));
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document.getElementById("page-" + id).classList.add("active");
+        el.classList.add("active");
+      }
+
+      const isDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      const gridColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+      const tickColor = isDark ? "#888" : "#888";
+
+      function makeChart(id, cfg) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+        return new Chart(ctx, cfg);
+      }
+
+      // Ring chart
+      makeChart("ringChart", {
+        type: "doughnut",
+        data: {
+          labels: [
+            "Ring Working",
+            "Ring Not Wkg",
+            "Not Connected",
+            "MAR Nodes",
+            "Disconnected",
+          ],
+          datasets: [
+            {
+              data: [5, 4, 2, 3, 1],
+              backgroundColor: [
+                "#1D9E75",
+                "#BA7517",
+                "#D85A30",
+                "#378ADD",
+                "#E24B4A",
+              ],
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "65%",
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw}` },
+            },
+          },
+        },
+      });
+
+      // Optical power chart
+      makeChart("optChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "MER1",
+            "MER2",
+            "MER3",
+            "MER4",
+            "MER5",
+            "MER6",
+            "MER8",
+            "MER9",
+            "MER10",
+            "MER11",
+          ],
+          datasets: [
+            {
+              label: "RX (dBm)",
+              data: [
+                -4.63, -5.41, -17.95, 8.64, -5.53, -13.48, -12.14, -6.31, -4.57,
+                -5.2,
+              ],
+              backgroundColor: "#378ADD88",
+            },
+            {
+              label: "TX (dBm)",
+              data: [
+                -2.46, -3.04, -2.55, -2.5, -2.88, -2.43, -3.6, -2.83, -3.0,
+                -2.33,
+              ],
+              backgroundColor: "#1D9E7588",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+            },
+            y: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+              title: {
+                display: true,
+                text: "dBm",
+                color: tickColor,
+                font: { size: 10 },
+              },
+            },
+          },
+        },
+      });
+
+      // MER node grid
+      const merData = [
+        { name: "MER1", loc: "SIG CEN", ring: "wkg", color: "#1D9E75" },
+        { name: "MER2", loc: "626", ring: "not wkg", color: "#BA7517" },
+        { name: "MER3", loc: "DOU", ring: "not wkg", color: "#BA7517" },
+        { name: "MER4", loc: "DIV HQ", ring: "not wkg", color: "#BA7517" },
+        { name: "MER5", loc: "RHQ", ring: "not wkg", color: "#BA7517" },
+        { name: "MER6", loc: "312", ring: "not wkg", color: "#BA7517" },
+        {
+          name: "MER7",
+          loc: "19 JAK",
+          ring: "not connected",
+          color: "#D85A30",
+        },
+        { name: "MER8", loc: "166 MH", ring: "wkg", color: "#1D9E75" },
+        { name: "MER9", loc: "15 GURDS", ring: "wkg", color: "#1D9E75" },
+        { name: "MER10", loc: "53 ARMD", ring: "wkg", color: "#1D9E75" },
+        { name: "MER11", loc: "221 MED", ring: "wkg", color: "#1D9E75" },
+        {
+          name: "MER12",
+          loc: "MAKWAL",
+          ring: "not connected",
+          color: "#D85A30",
+        },
+        { name: "MAR1", loc: "ACCESS", ring: "node", color: "#378ADD" },
+        { name: "MAR2", loc: "DIV NOC", ring: "node", color: "#378ADD" },
+        { name: "MAR3", loc: "NOC", ring: "node", color: "#378ADD" },
+      ];
+      const grid = document.getElementById("merGrid");
+      merData.forEach((m) => {
+        const div = document.createElement("div");
+        div.className = "mer-box";
+        div.style.background = m.color + "22";
+        div.style.borderColor = m.color + "55";
+        div.innerHTML = `<div class="mname" style="color:${m.color}">${m.name}</div><div class="mloc">${m.loc}</div>`;
+        div.onclick = () =>
+          sendPrompt(
+            `Tell me more about ${m.name} at ${m.loc}, ring status: ${m.ring}`,
+          );
+        grid.appendChild(div);
+      });
+
+      // Distance chart
+      makeChart("distChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "MER2",
+            "MER3",
+            "MER4",
+            "MER5",
+            "MER6",
+            "MER8",
+            "MER9",
+            "MER10",
+            "MER11",
+          ],
+          datasets: [
+            {
+              label: "Distance (km)",
+              data: [
+                0.988, 0.988, 1.115, 1.36, 2.09, 5.497, 6.164, 2.718, 5.207,
+              ],
+              backgroundColor: "#53349788",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+            },
+            y: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+              title: {
+                display: true,
+                text: "km",
+                color: tickColor,
+                font: { size: 10 },
+              },
+            },
+          },
+        },
+      });
+
+      // N-E Voltage bars
+      const neData = [
+        { site: "MER1", v: 0 },
+        { site: "MER2", v: 1 },
+        { site: "MER3", v: 8 },
+        { site: "MER4", v: 1 },
+        { site: "MER5", v: 2 },
+        { site: "MER6", v: 15 },
+        { site: "MER9", v: 21 },
+        { site: "MER10", v: 6 },
+        { site: "MER11", v: 22 },
+      ];
+      const neDiv = document.getElementById("neVolt");
+      neData.forEach((d) => {
+        const pct = Math.round((d.v / 25) * 100);
+        const color = d.v <= 2 ? "#1D9E75" : d.v <= 8 ? "#BA7517" : "#E24B4A";
+        neDiv.innerHTML += `<div class="bar-row"><div class="bar-label">${d.site}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct, 2)}%;background:${color}"></div></div><div class="bar-val">${d.v}V</div></div>`;
+      });
+
+      // Siemens donut
+      makeChart("siemChart", {
+        type: "doughnut",
+        data: {
+          labels: ["Analog", "Digital", "IP"],
+          datasets: [
+            {
+              data: [87, 19, 14],
+              backgroundColor: ["#378ADD", "#1D9E75", "#BA7517"],
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "60%",
+          plugins: { legend: { display: false } },
+        },
+      });
+
+      // Alkatel Active vs Faulty
+      makeChart("alkChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "Z24_2 S3-1",
+            "Z24_2 S3-3",
+            "Z24_2 S3-8",
+            "Z24_2 S3-10",
+            "Z24_2 S3-12",
+            "Z24_2 S3-16",
+            "Z24_2 S3-18",
+            "Z24_2 S4-1",
+            "Z24_2 S4-3",
+          ],
+          datasets: [
+            {
+              label: "Active",
+              data: [18, 14, 15, 12, 11, 13, 3, 13, 12],
+              backgroundColor: "#1D9E7588",
+            },
+            {
+              label: "Faulty",
+              data: [6, 10, 7, 12, 13, 9, 21, 8, 10],
+              backgroundColor: "#E24B4A88",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: "y",
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+            },
+            y: {
+              ticks: { color: tickColor, font: { size: 9 } },
+              grid: { color: gridColor },
+            },
+          },
+        },
+      });
+
+      // FAFA donut
+      makeChart("fafaChart", {
+        type: "doughnut",
+        data: {
+          labels: ["Active", "Spare", "No data"],
+          datasets: [
+            {
+              data: [15, 29, 10],
+              backgroundColor: ["#1D9E75", "#378ADD", "#88878066"],
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "55%",
+          plugins: { legend: { display: false } },
+        },
+      });
+
+      // Siemens table
+      const siemRows = [
+        ["LTU-1", "SLMO24 Digital", 4, 6, "warn"],
+        ["LTU-1", "SLMAV Analog", 19, 4, "ok"],
+        ["LTU-1", "STMI4 IP", 14, 0, "ok"],
+        ["LTU-2", "SLMO24 Digital", 1, 16, "danger"],
+        ["LTU-2", "SLMAC 24P", 16, 6, "warn"],
+        ["LTU-2", "SLMAE2 Analog", 21, 3, "ok"],
+        ["LTU-3", "SLMO24 Digital", 14, 7, "warn"],
+        ["LTU-3", "SLMAE Analog", 13, 12, "warn"],
+      ];
+      const stbl = document.getElementById("siemTbl");
+      siemRows.forEach((r) => {
+        stbl.innerHTML += `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><span class="badge b-${r[4]}">${r[3]}</span></td><td><span class="badge b-${r[4]}">${r[4] === "ok" ? "Good" : r[4] === "warn" ? "Partial" : "High Fault"}</span></td></tr>`;
+      });
+
+      // Alkatel bar
+      makeChart("alkBarChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "UA32",
+            "Z24_1",
+            "Z24_3",
+            "Z24_8",
+            "Z24_10",
+            "Z24_12",
+            "Z24_16",
+            "Z24_18",
+            "Z24_S4-1",
+            "Z24_S4-3",
+          ],
+          datasets: [
+            {
+              label: "Active",
+              data: [10, 18, 14, 15, 12, 11, 13, 3, 13, 12],
+              backgroundColor: "#378ADD88",
+            },
+            {
+              label: "Faulty",
+              data: [12, 6, 10, 7, 12, 13, 9, 21, 8, 10],
+              backgroundColor: "#E24B4A88",
+            },
+            {
+              label: "Spare",
+              data: [2, 0, 0, 2, 0, 0, 2, 0, 3, 2],
+              backgroundColor: "#1D9E7588",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: { color: tickColor, font: { size: 9 }, maxRotation: 35 },
+              grid: { color: gridColor },
+            },
+            y: {
+              stacked: true,
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+            },
+          },
+        },
+      });
+
+      // Load chart
+      makeChart("loadChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "Transformer\nPh1",
+            "Transformer\nPh2",
+            "Transformer\nPh3",
+            "Gen 125KVA\nPh1",
+            "Gen 125KVA\nPh2",
+            "Gen 125KVA\nPh3",
+            "Stabilizer\nPh1",
+            "Stabilizer\nPh2",
+            "Stabilizer\nPh3",
+          ],
+          datasets: [
+            {
+              label: "Load (A)",
+              data: [46, 58, 45, 25, 30, 28, 25, 34, 23],
+              backgroundColor: (ctx) => {
+                const v = ctx.raw;
+                return v > 50
+                  ? "#E24B4A88"
+                  : v > 35
+                    ? "#BA751788"
+                    : "#1D9E7588";
+              },
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: tickColor, font: { size: 10 }, maxRotation: 25 },
+              grid: { color: gridColor },
+            },
+            y: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+              title: {
+                display: true,
+                text: "Amperes",
+                color: tickColor,
+                font: { size: 11 },
+              },
+            },
+          },
+        },
+      });
+
+      // Earthing mini
+      makeChart("earthChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "NFS Eqpt",
+            "NFS Power",
+            "FCBC/UPS",
+            "Karel",
+            "COTS/SVR",
+            "IDF",
+            "MDF",
+          ],
+          datasets: [
+            {
+              label: "Earthing (Ω)",
+              data: [0.45, 0.87, 1.39, 1.52, 1.12, 0.42, 0.42],
+              backgroundColor: "#53349788",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+            },
+            y: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+              title: {
+                display: true,
+                text: "Ω",
+                color: tickColor,
+                font: { size: 10 },
+              },
+            },
+          },
+        },
+      });
+
+      // BEU donut
+      makeChart("beuChart", {
+        type: "doughnut",
+        data: {
+          labels: ["ON CCT", "STBY CCT", "OK Spare"],
+          datasets: [
+            {
+              data: [10, 8, 9],
+              backgroundColor: ["#378ADD", "#BA7517", "#1D9E75"],
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "60%",
+          plugins: { legend: { display: false } },
+        },
+      });
+
+      // BEU bar
+      makeChart("beuBarChart", {
+        type: "bar",
+        data: {
+          labels: ["BEU-1", "BEU-2", "BEU-3", "BEU-4", "BEU-5"],
+          datasets: [
+            {
+              label: "ON CCT",
+              data: [2, 4, 0, 4, 4],
+              backgroundColor: "#378ADD88",
+            },
+            {
+              label: "STBY CCT",
+              data: [2, 4, 0, 4, 0],
+              backgroundColor: "#BA751788",
+            },
+            {
+              label: "Spare",
+              data: [4, 4, 8, 0, 2],
+              backgroundColor: "#1D9E7588",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: { color: tickColor, font: { size: 11 } },
+              grid: { color: gridColor },
+            },
+            y: {
+              stacked: true,
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+            },
+          },
+        },
+      });
+
+      // BEU table
+      const beuRows = [
+        ["BEU-1", "Trib 3", "STBY CCT", "STBY CCT", "19 IBSC E1"],
+        ["BEU-1", "Trib 4", "ON CCT", "ON CCT", "26 ABSC E1"],
+        ["BEU-2", "Trib 1", "ON CCT", "ON CCT", "92 IBSC E1"],
+        ["BEU-2", "Trib 2", "STBY CCT", "STBY CCT", "162 IBSC E1"],
+        ["BEU-4", "Trib 1", "STBY CCT", "STBY CCT", "36 IBSC E1"],
+        ["BEU-4", "Trib 2", "ON CCT", "ON CCT", "36 IBSC IMA II"],
+        ["BEU-5", "Trib 1", "ON CCT", "ON CCT", "3(I) BDE E1"],
+      ];
+      const btbl = document.getElementById("beuTbl");
+      beuRows.forEach((r) => {
+        const c1c = r[2].includes("ON")
+          ? "b-ok"
+          : r[2].includes("STBY")
+            ? "b-warn"
+            : "b-off";
+        btbl.innerHTML += `<tr><td>${r[0]}</td><td>${r[1]}</td><td><span class="badge ${c1c}">${r[2]}</span></td><td><span class="badge ${c1c}">${r[3]}</span></td><td>${r[4]}</td><td><span class="badge b-ok">OK</span></td><td><span class="badge b-ok">OK</span></td></tr>`;
+      });
+
+      // MSP chart
+      makeChart("mspChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "MSA (P0-P30)",
+            "E1MSA FP LP3",
+            "E1MSA FP LP6",
+            "E1MSA FP LP7",
+            "PSU Units",
+          ],
+          datasets: [
+            {
+              label: "Active",
+              data: [16, 2, 2, 2, 2],
+              backgroundColor: "#1D9E7588",
+            },
+            {
+              label: "Spare",
+              data: [0, 1, 2, 2, 0],
+              backgroundColor: "#378ADD88",
+            },
+            {
+              label: "Inactive",
+              data: [14, 1, 0, 0, 0],
+              backgroundColor: "#88878044",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: { color: tickColor, font: { size: 11 } },
+              grid: { color: gridColor },
+            },
+            y: {
+              stacked: true,
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+            },
+          },
+        },
+      });
+
+      // Earthing full bar
+      makeChart("earthBarChart", {
+        type: "bar",
+        data: {
+          labels: [
+            "NFS Eqpt",
+            "NFS Power",
+            "FCBC/UPS",
+            "Karel",
+            "COTS/SVR",
+            "IDF",
+            "MDF",
+            "MSP(NEC)",
+            "BEU",
+            "NFS",
+            "FAFA",
+            "Alkatel",
+            "UPS 10/2K",
+            "MER1",
+            "MER3",
+            "MER4",
+            "MER5",
+            "MER6",
+            "MER9",
+            "MER10",
+            "MER11",
+          ],
+          datasets: [
+            {
+              label: "Earthing (Ω)",
+              data: [
+                0.45, 0.87, 1.39, 1.52, 1.12, 0.42, 0.42, 0.98, 1.2, 0.29, 0.39,
+                0.39, 0.92, 1.21, 10.35, 2.45, 2.56, 11.55, 10.33, 6.9, 0.15,
+              ],
+              backgroundColor: (ctx) => {
+                const v = ctx.raw;
+                return v > 5 ? "#E24B4A88" : v > 2 ? "#BA751788" : "#1D9E7588";
+              },
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw}Ω` } },
+          },
+          scales: {
+            x: {
+              ticks: { color: tickColor, font: { size: 9 }, maxRotation: 40 },
+              grid: { color: gridColor },
+            },
+            y: {
+              ticks: { color: tickColor, font: { size: 10 } },
+              grid: { color: gridColor },
+              title: {
+                display: true,
+                text: "Ohms (Ω)",
+                color: tickColor,
+                font: { size: 11 },
+              },
+            },
+          },
+        },
+      });
+
+      // Earthing grid
+      const earthData = [
+        { n: "MER1 SIG CEN", v: "1.21Ω", c: "ok" },
+        { n: "MER2 626", v: "5.69Ω", c: "warn" },
+        { n: "MER3 DOU", v: "10.35Ω", c: "danger" },
+        { n: "MER4 DIV HQ", v: "2.45Ω", c: "warn" },
+        { n: "MER5 RHQ", v: "2.56Ω", c: "warn" },
+        { n: "MER6 312", v: "11.55Ω", c: "danger" },
+        { n: "MER9 15GURDS", v: "10.33Ω", c: "danger" },
+        { n: "MER10 53ARMD", v: "6.90Ω", c: "warn" },
+        { n: "MER11 221MED", v: "0.15Ω", c: "ok" },
+        { n: "Siemens Exch", v: "1.20Ω", c: "ok" },
+        { n: "Alkatel Exch", v: "0.93Ω", c: "ok" },
+        { n: "FAFA Exch", v: "0.88Ω", c: "ok" },
+        { n: "MSP (NEC)", v: "0.98Ω", c: "ok" },
+        { n: "BEU", v: "1.20Ω", c: "ok" },
+        { n: "UPS 10KVA", v: "1.39Ω", c: "ok" },
+        { n: "Transformer", v: "1.29Ω", c: "ok" },
+      ];
+      const eg = document.getElementById("earthGrid");
+      earthData.forEach((d) => {
+        const colors = { ok: "#1D9E75", warn: "#BA7517", danger: "#E24B4A" };
+        const bgs = { ok: "#1D9E7511", warn: "#BA751711", danger: "#E24B4A11" };
+        eg.innerHTML += `<div class="e-card" style="border-color:${colors[d.c]}44;background:${bgs[d.c]}">
+    <div class="ename" style="color:${colors[d.c]}">${d.n}</div>
+    <div class="e-val" style="color:${colors[d.c]}">${d.v}</div>
+  </div>`;
+      });
+    </script>
+  </body>
+</html>
